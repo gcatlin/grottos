@@ -73,6 +73,8 @@ func (g *Game) MainMenu() {
 		},
 	}
 	ms.KeyBindings = NewKeyBindingMap([]KeyBinding{
+		KeyBinding{'n', func() { g.PlayGame() }},
+		KeyBinding{'q', func() { g.ExitGame() }},
 		KeyBinding{'k', func() { ms.PrevItem() }},
 		KeyBinding{'j', func() { ms.NextItem() }},
 		KeyBinding{10, func() { ms.ExecuteItem() }},
