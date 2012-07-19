@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gcatlin/gocurses"
+	//	"fmt"
+	"math/rand"
 )
 
 func main() {
@@ -53,68 +55,60 @@ func (g *Game) Shutdown() {
 }
 
 func (g *Game) Render() {
-	g.Screen.Render(g)
+	g.Screen.Render()
 }
 
 func (g *Game) WaitForInput() KeyCode {
 	return KeyCode(g.Window.Getch())
 }
 
-func (g *Game) HandleInput(kc KeyCode) {
-	g.Screen.HandleInput(kc)
+func (g *Game) HandleInput(key KeyCode) {
+	g.Screen.HandleInput(key)
 }
 
 func (g *Game) MainMenu() {
-	ms := MenuScreen{
+	s := MenuScreen{
 		Title: "Grottos of Go",
 		Items: []MenuItem{
 			MenuItem{"New Game", func() { g.PlayGame() }},
 			MenuItem{"Quit", func() { g.ExitGame() }},
 		},
 	}
-	ms.KeyBindings = NewKeyBindingMap([]KeyBinding{
+	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
 		KeyBinding{'n', func() { g.PlayGame() }},
 		KeyBinding{'q', func() { g.ExitGame() }},
-		KeyBinding{'k', func() { ms.PrevItem() }},
-		KeyBinding{'j', func() { ms.NextItem() }},
-		KeyBinding{10, func() { ms.ExecuteItem() }},
+		KeyBinding{'k', func() { s.PrevItem() }},
+		KeyBinding{'j', func() { s.NextItem() }},
+		KeyBinding{10, func() { s.ExecuteItem() }},
 	})
-	g.Screen = &ms
+	g.Screen = &s
 }
 
 func (g *Game) PlayGame() {
-	ps := PlayScreen{Game: g}
-
-	ps.Map = NewGameMap(
-		[][]int{
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0},
-			[]int{0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0},
-			[]int{0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0},
-			[]int{0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0},
-			[]int{0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0},
-			[]int{0, 0, 1, 1, 2, 1, 1, 0, 0, 0, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			[]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}})
-
-	ps.KeyBindings = NewKeyBindingMap([]KeyBinding{
-		KeyBinding{'y', func() { ps.MovePlayerNorthWest() }},
-		KeyBinding{'u', func() { ps.MovePlayerNorthEast() }},
-		KeyBinding{'h', func() { ps.MovePlayerWest() }},
-		KeyBinding{'j', func() { ps.MovePlayerSouth() }},
-		KeyBinding{'k', func() { ps.MovePlayerNorth() }},
-		KeyBinding{'l', func() { ps.MovePlayerEast() }},
-		KeyBinding{'b', func() { ps.MovePlayerSouthWest() }},
-		KeyBinding{'n', func() { ps.MovePlayerSouthEast() }},
-		KeyBinding{'q', func() { ps.ExitToMainMenu() }},
+	s := PlayScreen{Game: g}
+	s.Map = NewRandomGameMap(g.Width, g.Height)
+	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
+		KeyBinding{'y', func() { s.MovePlayerNorthWest() }},
+		KeyBinding{'u', func() { s.MovePlayerNorthEast() }},
+		KeyBinding{'h', func() { s.MovePlayerWest() }},
+		KeyBinding{'j', func() { s.MovePlayerSouth() }},
+		KeyBinding{'k', func() { s.MovePlayerNorth() }},
+		KeyBinding{'l', func() { s.MovePlayerEast() }},
+		KeyBinding{'b', func() { s.MovePlayerSouthWest() }},
+		KeyBinding{'n', func() { s.MovePlayerSouthEast() }},
+		KeyBinding{'q', func() { g.MainMenu() }},
+		KeyBinding{10, func() { g.WinGame() }},
+		KeyBinding{27, func() { g.LoseGame() }},
 	})
-	g.Screen = &ps
+	g.Screen = s
+}
+
+func (g *Game) WinGame() {
+	g.Screen = NewEndScreen(g, "You win!!!")
+}
+
+func (g *Game) LoseGame() {
+	g.Screen = NewEndScreen(g, "You lose!!!")
 }
 
 type KeyCode int
@@ -138,7 +132,7 @@ func NewKeyBindingMap(bindings []KeyBinding) KeyBindingMap {
 }
 
 func (km *KeyBindingMap) Lookup(kc KeyCode) Command {
-	if cmd, hasKey := km.Bindings[kc]; hasKey {
+	if cmd, ok := km.Bindings[kc]; ok {
 		return cmd
 	}
 	return func() {} // no-op
@@ -153,8 +147,8 @@ func (km *KeyBindingMap) Unbind(kc KeyCode) {
 }
 
 type Screen interface {
-	Render(*Game)
 	HandleInput(KeyCode)
+	Render()
 }
 
 type MenuScreen struct {
@@ -165,48 +159,44 @@ type MenuScreen struct {
 	KeyBindings KeyBindingMap
 }
 
-func (ms *MenuScreen) Render(g *Game) {
+func (s *MenuScreen) Render(g *Game) {
 	g.Window.Clear()
 
 	g.Window.Attron(curses.A_BOLD)
-	g.Window.Mvaddstr(0, 0, ms.Title)
+	g.Window.Mvaddstr(0, 0, s.Title)
 	g.Window.Attroff(curses.A_BOLD)
 
 	offset := 2
-	for i, item := range ms.Items {
+	for i, item := range s.Items {
 		indicator := "  "
-		if i == ms.CurrentItem {
+		if i == s.CurrentItem {
 			indicator = "> "
 		}
 		g.Window.Mvaddstr(i+offset, 0, indicator+item.Name)
 	}
 }
 
-func (ms *MenuScreen) HandleInput(kc KeyCode) {
-	ms.KeyBindings.Lookup(kc)()
+func (s *MenuScreen) PrevItem() {
+	s.SelectItem(s.CurrentItem - 1)
 }
 
-func (ms *MenuScreen) PrevItem() {
-	ms.SelectItem(ms.CurrentItem - 1)
+func (s *MenuScreen) NextItem() {
+	s.SelectItem(s.CurrentItem + 1)
 }
 
-func (ms *MenuScreen) NextItem() {
-	ms.SelectItem(ms.CurrentItem + 1)
-}
-
-func (ms *MenuScreen) SelectItem(i int) {
+func (s *MenuScreen) SelectItem(i int) {
 	// wrap around
-	max := len(ms.Items) - 1
+	max := len(s.Items) - 1
 	if i > max {
 		i = 0
 	} else if i < 0 {
 		i = max
 	}
-	ms.CurrentItem = i
+	s.CurrentItem = i
 }
 
-func (ms *MenuScreen) ExecuteItem() {
-	ms.Items[ms.CurrentItem].Command()
+func (s *MenuScreen) ExecuteItem() {
+	s.Items[s.CurrentItem].Command()
 }
 
 type MenuItem struct {
@@ -214,91 +204,96 @@ type MenuItem struct {
 	Command func()
 }
 
+type EndScreen struct {
+	Screen
+	Game        *Game
+	Message     string
+	KeyBindings KeyBindingMap
+}
+
+func NewEndScreen(g *Game, msg string) *EndScreen {
+	s := EndScreen{Game: g, Message: msg}
+	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
+		KeyBinding{10, func() { g.MainMenu() }},
+	})
+	return &s
+}
+
+func (s *EndScreen) Render(g *Game) {
+	g.Window.Clear()
+	g.Window.Mvaddstr(0, 0, s.Message)
+}
+
 type PlayScreen struct {
 	Screen
 	Game        *Game
-	Map         GameMap
+	Map         *GameMap
 	KeyBindings KeyBindingMap
 	Player      Player
-	Abort       bool
 }
 
-func (ps *PlayScreen) Render(g *Game) {
-	for y := 0; y < ps.Map.Height; y++ {
+func (s *PlayScreen) Render(g *Game) {
+	for y := 0; y < s.Map.Height; y++ {
 		g.Window.Move(y, 0)
-		for x := 0; x < ps.Map.Width; x++ {
-			c := int('.')
-			switch ps.Map.Grid[y][x] {
-			case 1:
-				c = int('#')
-			case 2:
-				c = int('+')
-			}
+		for x := 0; x < s.Map.Width; x++ {
+			c := s.Map.Tiles[y][x]
 			g.Window.Addch(c)
 		}
 	}
 
-	g.Window.Mvaddch(ps.Player.Y, ps.Player.X, '@')
+	g.Window.Mvaddch(s.Player.Y, s.Player.X, '@')
 }
 
-func (ps *PlayScreen) HandleInput(kc KeyCode) {
-	ps.KeyBindings.Lookup(kc)()
+func (s *PlayScreen) HandleInput() {
+	s.KeyBindings.Lookup(kc)()
 
-	if ps.Abort {
-		ps.Game.MainMenu()
+	if s.Player.X < 0 {
+		s.Player.X = 0
+	} else if s.Player.X >= s.Map.Width {
+		s.Player.X = s.Map.Width - 1
 	}
 
-	if ps.Player.X < 0 {
-		ps.Player.X = 0
-	} else if ps.Player.X >= ps.Map.Width {
-		ps.Player.X = ps.Map.Width - 1
-	}
-
-	if ps.Player.Y < 0 {
-		ps.Player.Y = 0
-	} else if ps.Player.Y >= ps.Map.Height {
-		ps.Player.Y = ps.Map.Height - 1
+	if s.Player.Y < 0 {
+		s.Player.Y = 0
+	} else if s.Player.Y >= s.Map.Height {
+		s.Player.Y = s.Map.Height - 1
 	}
 }
 
-func (ps *PlayScreen) MovePlayerNorthWest() {
-	ps.Player.X--
-	ps.Player.Y--
+func (s *PlayScreen) MovePlayerNorthWest() {
+	s.Player.X--
+	s.Player.Y--
 }
 
-func (ps *PlayScreen) MovePlayerNorth() {
-	ps.Player.Y--
+func (s *PlayScreen) MovePlayerNorth() {
+	s.Player.Y--
 }
 
-func (ps *PlayScreen) MovePlayerNorthEast() {
-	ps.Player.X++
-	ps.Player.Y--
+func (s *PlayScreen) MovePlayerNorthEast() {
+	s.Player.X++
+	s.Player.Y--
 }
 
-func (ps *PlayScreen) MovePlayerEast() {
-	ps.Player.X++
+func (s *PlayScreen) MovePlayerEast() {
+	s.Player.X++
 }
 
-func (ps *PlayScreen) MovePlayerSouthEast() {
-	ps.Player.X++
-	ps.Player.Y++
+func (s *PlayScreen) MovePlayerSouthEast() {
+	s.Player.X++
+	s.Player.Y++
 }
 
-func (ps *PlayScreen) MovePlayerSouth() {
-	ps.Player.Y++
+func (s *PlayScreen) MovePlayerSouth() {
+	s.Player.Y++
 }
 
-func (ps *PlayScreen) MovePlayerSouthWest() {
-	ps.Player.X--
-	ps.Player.Y++
+func (s *PlayScreen) MovePlayerSouthWest() {
+	s.Player.X--
+	s.Player.Y++
 }
 
-func (ps *PlayScreen) MovePlayerWest() {
-	ps.Player.X--
-}
-
-func (ps *PlayScreen) ExitToMainMenu() {
-	ps.Abort = true
+func (s *PlayScreen) MovePlayerWest() {
+	s.Player.X--
 }
 
 type Player struct {
@@ -306,13 +301,39 @@ type Player struct {
 }
 
 type GameMap struct {
-	Grid          [][]int
+	Tiles         [][]int
 	Width, Height int
 }
 
-func NewGameMap(grid [][]int) GameMap {
-	gm := GameMap{Grid: grid}
-	gm.Height = len(grid)
-	gm.Width = len(grid[0])
-	return gm
+func (m *GameMap) GetTile(x, y int) (c int, ok bool) {
+	ymax := len(m.Tiles) - 1
+	if 0 <= y && y <= ymax && ymax > 0 && x < len(m.Tiles[0]) {
+		c = m.Tiles[y][x]
+	}
+	return
+}
+
+func NewGameMap(tiles [][]int) *GameMap {
+	m := GameMap{Tiles: tiles}
+	m.Height = len(tiles)
+	m.Width = len(tiles[0])
+	return &m
+}
+
+func NewRandomGameMap(w, h int) *GameMap {
+	chars := []int{'.', '#'}
+	tiles := make([][]int, h)
+	for y := 0; y < h; y++ {
+		tiles[y] = make([]int, w)
+		for x := 0; x < w; x++ {
+			tiles[y][x] = chars[rand.Intn(len(chars))]
+		}
+	}
+	return NewGameMap(tiles)
+}
+
+type Tile struct {
+	Type  int // bitfield?
+	Char  int
+	Color int
 }
