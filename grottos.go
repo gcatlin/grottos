@@ -12,9 +12,12 @@ func main() {
 		log.Fatalf("Could not open log file: %v", err)
 	}
 	defer f.Close()
-	logger := log.New(f, "", log.LstdFlags)
 
-	g := Game{Width: 80, Height: 24, Logger: logger}
+	g := Game{
+		Width:  80,
+		Height: 24,
+		Logger: log.New(f, "", log.LstdFlags|log.Lshortfile|log.Lmicroseconds),
+	}
 	g.Init()
 	defer g.Shutdown()
 	g.Run()
@@ -33,7 +36,7 @@ type Game struct {
 }
 
 func (g *Game) Init() {
-	g.Println("Initializing")
+	g.Logger.Println("Initializing")
 	w := Window{curses.Initscr()}
 	w.Clear()
 	curses.Cbreak()
@@ -59,8 +62,7 @@ func (g *Game) ExitGame() {
 }
 
 func (g *Game) Shutdown() {
-	g.Println("Shutting down")
-	w := Window{curses.Initscr()}
+	g.Logger.Println("Shutting down")
 	curses.End()
 	g.Window.Clear()
 }
