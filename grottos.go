@@ -229,6 +229,10 @@ type EndScreen struct {
 	KeyBindings KeyBindingMap
 }
 
+func (s *EndScreen) HandleInput(kc KeyCode) {
+	s.KeyBindings.Lookup(kc)()
+}
+
 func NewEndScreen(g *Game, msg string) *EndScreen {
 	s := EndScreen{Game: g, Message: msg}
 	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
