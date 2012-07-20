@@ -2,12 +2,23 @@ package main
 
 import (
 	"github.com/gcatlin/gocurses"
-	//	"fmt"
+	"log"
 	"math/rand"
+	"os"
 )
 
 func main() {
-	g := Game{Width: 80, Height: 24}
+	f, err := os.OpenFile("log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Could not open log file: %v", err)
+	}
+	defer f.Close()
+
+	g := Game{
+		Width:  80,
+		Height: 24,
+		Logger: log.New(f, "", log.LstdFlags|log.Lshortfile|log.Lmicroseconds),
+	}
 	g.Init()
 	defer g.Shutdown()
 	g.Run()
@@ -22,9 +33,11 @@ type Game struct {
 	Width, Height int
 	Screen        Screen
 	Quit          bool
+	*log.Logger
 }
 
 func (g *Game) Init() {
+	g.Logger.Println("Initializing")
 	w := Window{curses.Initscr()}
 	w.Clear()
 	curses.Cbreak()
@@ -50,6 +63,7 @@ func (g *Game) ExitGame() {
 }
 
 func (g *Game) Shutdown() {
+	g.Logger.Println("Shutting down")
 	curses.End()
 	g.Window.Clear()
 }
