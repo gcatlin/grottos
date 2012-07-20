@@ -69,7 +69,7 @@ func (g *Game) Shutdown() {
 }
 
 func (g *Game) Render() {
-	g.Screen.Render()
+	g.Screen.Render(g)
 }
 
 func (g *Game) WaitForInput() KeyCode {
@@ -114,7 +114,7 @@ func (g *Game) PlayGame() {
 		KeyBinding{10, func() { g.WinGame() }},
 		KeyBinding{27, func() { g.LoseGame() }},
 	})
-	g.Screen = s
+	g.Screen = &s
 }
 
 func (g *Game) WinGame() {
@@ -162,7 +162,7 @@ func (km *KeyBindingMap) Unbind(kc KeyCode) {
 
 type Screen interface {
 	HandleInput(KeyCode)
-	Render()
+	Render(*Game)
 }
 
 type MenuScreen struct {
@@ -171,6 +171,10 @@ type MenuScreen struct {
 	Items       []MenuItem
 	CurrentItem int
 	KeyBindings KeyBindingMap
+}
+
+func (s *MenuScreen) HandleInput(kc KeyCode) {
+	s.KeyBindings.Lookup(kc)()
 }
 
 func (s *MenuScreen) Render(g *Game) {
@@ -258,7 +262,7 @@ func (s *PlayScreen) Render(g *Game) {
 	g.Window.Mvaddch(s.Player.Y, s.Player.X, '@')
 }
 
-func (s *PlayScreen) HandleInput() {
+func (s *PlayScreen) HandleInput(kc KeyCode) {
 	s.KeyBindings.Lookup(kc)()
 
 	if s.Player.X < 0 {
