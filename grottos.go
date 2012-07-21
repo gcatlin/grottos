@@ -100,7 +100,8 @@ func (g *Game) MainMenu() {
 
 func (g *Game) PlayGame() {
 	s := PlayScreen{Game: g}
-	s.Map = NewRandomGameMap(g.Width, g.Height)
+	s.Map = NewGameMap(g.Width, g.Height)
+	s.Map.Randomize()
 	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
 		KeyBinding{'y', func() { s.MovePlayerNorthWest() }},
 		KeyBinding{'u', func() { s.MovePlayerNorthEast() }},
@@ -110,6 +111,8 @@ func (g *Game) PlayGame() {
 		KeyBinding{'l', func() { s.MovePlayerEast() }},
 		KeyBinding{'b', func() { s.MovePlayerSouthWest() }},
 		KeyBinding{'n', func() { s.MovePlayerSouthEast() }},
+		KeyBinding{'r', func() { s.Map.Randomize() }},
+		KeyBinding{'s', func() { s.Map.Smooth() }},
 		KeyBinding{'q', func() { g.MainMenu() }},
 		KeyBinding{10, func() { g.WinGame() }},
 		KeyBinding{27, func() { g.LoseGame() }},
@@ -319,6 +322,10 @@ func (s *PlayScreen) MovePlayerWest() {
 }
 
 type Player struct {
+	Point
+}
+
+type Point struct {
 	X, Y int
 }
 
@@ -327,31 +334,68 @@ type GameMap struct {
 	Width, Height int
 }
 
-func (m *GameMap) GetTile(x, y int) (c int, ok bool) {
-	ymax := len(m.Tiles) - 1
-	if 0 <= y && y <= ymax && ymax > 0 && x < len(m.Tiles[0]) {
-		c = m.Tiles[y][x]
+func (m *GameMap) GetTile(x, y int) (t int, ok bool) {
+	if 0 <= y && y < m.Height && 0 <= x && x < m.Width {
+		t = m.Tiles[y][x]
+		ok = true
 	}
 	return
 }
 
-func NewGameMap(tiles [][]int) *GameMap {
-	m := GameMap{Tiles: tiles}
-	m.Height = len(tiles)
-	m.Width = len(tiles[0])
-	return &m
-}
-
-func NewRandomGameMap(w, h int) *GameMap {
-	chars := []int{'.', '#'}
-	tiles := make([][]int, h)
-	for y := 0; y < h; y++ {
-		tiles[y] = make([]int, w)
-		for x := 0; x < w; x++ {
-			tiles[y][x] = chars[rand.Intn(len(chars))]
+func (m *GameMap) GetWallCount(x, y int) int {
+	c := 0
+	for _, p := range m.GetNeighbors(x, y) {
+		if t, ok := m.GetTile(p.X, p.Y); !ok || t == '#' {
+			c += 1
 		}
 	}
-	return NewGameMap(tiles)
+	if t, _ := m.GetTile(x, y); t == '#' {
+		c += 1
+	}
+	return c
+}
+
+func (m *GameMap) GetNeighbors(x, y int) []Point {
+	return []Point{
+		Point{x - 1, y - 1}, Point{x, y - 1}, Point{x + 1, y - 1},
+		Point{x - 1, y}, Point{x + 1, y},
+		Point{x - 1, y + 1}, Point{x, y + 1}, Point{x + 1, y + 1},
+	}
+}
+
+func (m *GameMap) Smooth() {
+	s := NewGameMap(m.Width, m.Height)
+	for y := 0; y < m.Height; y++ {
+		for x:= 0; x < m.Width; x++ {
+			c := m.GetWallCount(x, y)
+			if c >= 5 {
+				s.Tiles[y][x] = '#'
+			} else {
+				s.Tiles[y][x] = '.'
+			}
+		}
+	}
+	m.Tiles = s.Tiles
+}
+
+func NewGameMap(w, h int) *GameMap {
+	m := new(GameMap)
+	m.Tiles = make([][]int, h)
+	for y := 0; y < h; y++ {
+		m.Tiles[y] = make([]int, w)
+	}
+	m.Height = h
+	m.Width = w
+	return m
+}
+
+func (m *GameMap) Randomize() {
+	chars := []int{'.', '#'}
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			m.Tiles[y][x] = chars[rand.Intn(len(chars))]
+		}
+	}
 }
 
 type Tile struct {
