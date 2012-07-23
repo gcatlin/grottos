@@ -259,7 +259,7 @@ type PlayScreen struct {
 }
 
 func (s *PlayScreen) Render(g *Game) {
-	viewport_w, viewport_h := 40, 20
+	viewport_w, viewport_h := 60, 20
 	mid_x, mid_y := viewport_w/2, viewport_h/2
 	origin_x, origin_y := s.Player.X-mid_x, s.Player.Y-mid_y
 
@@ -295,12 +295,12 @@ func (s *PlayScreen) Render(g *Game) {
 	}
 
 	g.Window.Mvaddch(py, px, '@')
-	g.Window.Mvaddstr(viewport_h+2, 0, fmt.Sprintf(
-		"Player: %d, %d    VP: %d, %d    Mid: %d, %d    P: %d, %d",
-		s.Player.X, s.Player.Y, origin_x, origin_y, mid_x, mid_y, px, py))
+	g.Window.Mvaddstr(viewport_h+1, 0, fmt.Sprintf("[%d, %d]", s.Player.X, s.Player.Y))
 }
 
 func (s *PlayScreen) HandleInput(kc KeyCode) {
+	px, py := s.Player.X, s.Player.Y
+
 	s.KeyBindings.Lookup(kc)()
 
 	if s.Player.X < 0 {
@@ -313,6 +313,13 @@ func (s *PlayScreen) HandleInput(kc KeyCode) {
 		s.Player.Y = 0
 	} else if s.Player.Y >= s.Map.Height {
 		s.Player.Y = s.Map.Height - 1
+	}
+
+	if px != s.Player.X || py != s.Player.Y {
+		if t, ok := s.Map.GetTile(s.Player.X, s.Player.Y); ok && t == '#' {
+			s.Map.Tiles[s.Player.Y][s.Player.X] = '.'
+			s.Player.X, s.Player.Y = px, py
+		}
 	}
 }
 
