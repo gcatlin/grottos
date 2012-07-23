@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gcatlin/gocurses"
 	"log"
 	"math/rand"
@@ -100,7 +101,7 @@ func (g *Game) MainMenu() {
 
 func (g *Game) PlayGame() {
 	s := PlayScreen{Game: g}
-	s.Map = NewGameMap(g.Width, g.Height)
+	s.Map = NewGameMap(2*g.Width, 2*g.Height)
 	s.Map.Randomize()
 	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
 		KeyBinding{'y', func() { s.MovePlayerNorthWest() }},
@@ -258,15 +259,45 @@ type PlayScreen struct {
 }
 
 func (s *PlayScreen) Render(g *Game) {
-	for y := 0; y < s.Map.Height; y++ {
-		g.Window.Move(y, 0)
-		for x := 0; x < s.Map.Width; x++ {
-			c := s.Map.Tiles[y][x]
-			g.Window.Addch(c)
+	viewport_w, viewport_h := 40, 20
+	mid_x, mid_y := viewport_w/2, viewport_h/2
+	origin_x, origin_y := s.Player.X-mid_x, s.Player.Y-mid_y
+
+	if origin_x < 0 {
+		origin_x = 0
+	} else if origin_x+viewport_w >= s.Map.Width {
+		origin_x = s.Map.Width - viewport_w
+	}
+	if origin_y < 0 {
+		origin_y = 0
+	} else if origin_y+viewport_h >= s.Map.Height {
+		origin_y = s.Map.Height  - viewport_h
+	}
+
+	for y := 0; y < viewport_h; y++ {
+		for x := 0; x < viewport_w; x++ {
+			if c, ok := s.Map.GetTile(origin_x+x, origin_y+y); ok {
+				g.Window.Mvaddch(y, x, c)
+			}
 		}
 	}
 
-	g.Window.Mvaddch(s.Player.Y, s.Player.X, '@')
+	px, py := mid_x, mid_y
+	if s.Player.X < mid_x {
+		px = s.Player.X
+	} else if s.Player.X > origin_x+mid_x {
+		px = s.Player.X - origin_x
+	}
+	if s.Player.Y < mid_y {
+		py = s.Player.Y
+	} else if s.Player.Y > origin_y+mid_y {
+		py = s.Player.Y - origin_y
+	}
+
+	g.Window.Mvaddch(py, px, '@')
+	g.Window.Mvaddstr(viewport_h+2, 0, fmt.Sprintf(
+		"Player: %d, %d    VP: %d, %d    Mid: %d, %d    P: %d, %d",
+		s.Player.X, s.Player.Y, origin_x, origin_y, mid_x, mid_y, px, py))
 }
 
 func (s *PlayScreen) HandleInput(kc KeyCode) {
@@ -366,7 +397,7 @@ func (m *GameMap) GetNeighbors(x, y int) []Point {
 func (m *GameMap) Smooth() {
 	s := NewGameMap(m.Width, m.Height)
 	for y := 0; y < m.Height; y++ {
-		for x:= 0; x < m.Width; x++ {
+		for x := 0; x < m.Width; x++ {
 			c := m.GetWallCount(x, y)
 			if c >= 5 {
 				s.Tiles[y][x] = '#'
