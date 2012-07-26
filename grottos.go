@@ -471,11 +471,12 @@ func (m *GameMap) GetNeighbors(x, y int) []Point {
 	}
 }
 
-func (m *GameMap) PutEntity(p Point, e interface{}) {
+func (m *GameMap) PutEntity(x, y int, e *Entity) {
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
 			p := Point{x, y}
-			m.Entities[p] = append(m.Entities[p], e.(*Entity))
+			e.Location = p
+			m.Entities[p] = append(m.Entities[p], e)
 		}
 	}
 }
@@ -494,9 +495,7 @@ func (m *GameMap) AddFoxes() {
 		for x := 0; x < m.Width; x++ {
 			if rand.Intn(200) == 1 {
 				f := Fox{}
-				p := Point{x, y}
-				f.Location = p
-				m.PutEntity(p, &f.Entity)
+				m.PutEntity(x, y, &f.Entity)
 			}
 		}
 	}
@@ -507,9 +506,7 @@ func (m *GameMap) AddRabbits() {
 		for x := 0; x < m.Width; x++ {
 			if rand.Intn(25) == 1 {
 				r := Rabbit{}
-				p := Point{x, y}
-				r.Location = p
-				m.PutEntity(p, &r.Entity)
+				m.PutEntity(x, y, &r.Entity)
 			}
 		}
 	}
