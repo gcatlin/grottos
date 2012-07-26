@@ -471,13 +471,11 @@ func (m *GameMap) GetNeighbors(x, y int) []Point {
 	}
 }
 
-func (m *GameMap) PutEntity(x, y int, e interface{}) {
-	e.(Entity)
+func (m *GameMap) PutEntity(p Point, e interface{}) {
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
 			p := Point{x, y}
-			e.Location = p
-			m.Entities[p] = append(m.Entities[p], e)
+			m.Entities[p] = append(m.Entities[p], e.(*Entity))
 		}
 	}
 }
@@ -495,7 +493,10 @@ func (m *GameMap) AddFoxes() {
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
 			if rand.Intn(200) == 1 {
-				m.PutEntity(x, y, Entity(&Fox{}))
+				f := Fox{}
+				p := Point{x, y}
+				f.Location = p
+				m.PutEntity(p, &f.Entity)
 			}
 		}
 	}
@@ -505,7 +506,10 @@ func (m *GameMap) AddRabbits() {
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
 			if rand.Intn(25) == 1 {
-				m.PutEntity(x, y, &Rabbit{})
+				r := Rabbit{}
+				p := Point{x, y}
+				r.Location = p
+				m.PutEntity(p, &r.Entity)
 			}
 		}
 	}
@@ -546,6 +550,7 @@ func (m *GameMap) Smooth() {
 func NewGameMap(w, h int) *GameMap {
 	m := new(GameMap)
 	m.Tiles = make([][]int, h)
+	m.Entities = map[Point][]*Entity{}
 	for y := 0; y < h; y++ {
 		m.Tiles[y] = make([]int, w)
 	}
