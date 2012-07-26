@@ -17,7 +17,7 @@ func main() {
 
 	g := Game{
 		Width:  80,
-		Height: 24,
+		Height: 25,
 		Logger: log.New(f, "", log.LstdFlags|log.Lshortfile|log.Lmicroseconds),
 	}
 	g.Init()
@@ -101,7 +101,7 @@ func (g *Game) MainMenu() {
 
 func (g *Game) PlayGame() {
 	s := PlayScreen{Game: g}
-	s.Map = NewGameMap(2*g.Width, 2*g.Height)
+	s.Map = NewGameMap(10*g.Width, 10*g.Height)
 	s.Map.Randomize()
 	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
 		KeyBinding{'y', func() { s.MovePlayerNorthWest() }},
@@ -112,8 +112,10 @@ func (g *Game) PlayGame() {
 		KeyBinding{'l', func() { s.MovePlayerEast() }},
 		KeyBinding{'b', func() { s.MovePlayerSouthWest() }},
 		KeyBinding{'n', func() { s.MovePlayerSouthEast() }},
-		KeyBinding{'r', func() { s.Map.Randomize() }},
-		KeyBinding{'s', func() { s.Map.Smooth() }},
+		KeyBinding{'g', func() { s.Map.Grasslands() }},
+		KeyBinding{'r', func() { s.Map.AddRabbits() }},
+		KeyBinding{'t', func() { s.Map.AddTrees() }},
+		KeyBinding{'c', func() { s.Map.MakeCaves() }},
 		KeyBinding{'q', func() { g.MainMenu() }},
 		KeyBinding{10, func() { g.WinGame() }},
 		KeyBinding{27, func() { g.LoseGame() }},
@@ -259,7 +261,7 @@ type PlayScreen struct {
 }
 
 func (s *PlayScreen) Render(g *Game) {
-	viewport_w, viewport_h := 60, 20
+	viewport_w, viewport_h := 80, 20
 	mid_x, mid_y := viewport_w/2, viewport_h/2
 	origin_x, origin_y := s.Player.X-mid_x, s.Player.Y-mid_y
 
@@ -359,6 +361,73 @@ func (s *PlayScreen) MovePlayerWest() {
 	s.Player.X--
 }
 
+type Entity struct {
+	Location Point
+	Symbol int
+	//Age
+	//Material
+}
+
+func Eat(e *Entity) {
+}
+
+type Forager interface {
+	Eat(*Entity)
+}
+
+type Eater interface {
+	Eat(*Entity)
+	// eaters have food preferences; e.g. grass, rabbits, rocks, etc.
+	// eating yields energy
+}
+
+type Sleeper interface {
+	Sleep()
+	// sleepers MUST sleep
+	// sleepers have different sleep duration requirements and behaviors
+	// sleepers seek shelter
+}
+
+type Rabbit struct {
+	Entity
+	Eater
+	// high agility
+	//behavior: highly alert for predators, freezes/flees if alerted
+	//Grazer look for food, go to food, eat food
+	//Destructible
+	//Skinnable
+	//Edible
+	//Breeder
+	//Mover
+	//Burrower
+	//Evader
+	//Attacker
+	//material: flesh
+	//Domesticable
+}
+
+type Fox struct {
+	Entity
+	Eater
+	// behavior: searches for prey, sneaks when prey detected
+	//Predator
+	//Destructible
+	//Skinnable
+	//Edible
+	//Breeder
+	//Mover
+	//Burrower
+	//Evader
+	//Attacker
+	//material: flesh
+}
+
+type Tree struct {
+	Entity
+	//material: wood
+	//Destructible
+}
+
 type Player struct {
 	Point
 }
@@ -370,6 +439,7 @@ type Point struct {
 type GameMap struct {
 	Tiles         [][]int
 	Width, Height int
+	Entities      map[Point][]*Entity
 }
 
 func (m *GameMap) GetTile(x, y int) (t int, ok bool) {
@@ -398,6 +468,63 @@ func (m *GameMap) GetNeighbors(x, y int) []Point {
 		Point{x - 1, y - 1}, Point{x, y - 1}, Point{x + 1, y - 1},
 		Point{x - 1, y}, Point{x + 1, y},
 		Point{x - 1, y + 1}, Point{x, y + 1}, Point{x + 1, y + 1},
+	}
+}
+
+func (m *GameMap) PutEntity(x, y int, e interface{}) {
+	e.(Entity)
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			p := Point{x, y}
+			e.Location = p
+			m.Entities[p] = append(m.Entities[p], e)
+		}
+	}
+}
+
+func (m *GameMap) Grasslands() {
+	chars := []int{'.', ',', ';', '`', '\''}
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			m.Tiles[y][x] = chars[rand.Intn(len(chars))]
+		}
+	}
+}
+
+func (m *GameMap) AddFoxes() {
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			if rand.Intn(200) == 1 {
+				m.PutEntity(x, y, Entity(&Fox{}))
+			}
+		}
+	}
+}
+
+func (m *GameMap) AddRabbits() {
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			if rand.Intn(25) == 1 {
+				m.PutEntity(x, y, &Rabbit{})
+			}
+		}
+	}
+}
+
+func (m *GameMap) AddTrees() {
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			if rand.Intn(4) == 1 {
+				m.Tiles[y][x] = 'T'
+			}
+		}
+	}
+}
+
+func (m *GameMap) MakeCaves() {
+	m.Randomize()
+	for i := 0; i < 3; i++ {
+		m.Smooth()
 	}
 }
 
@@ -441,3 +568,11 @@ type Tile struct {
 	Char  int
 	Color int
 }
+
+// const (
+// 	Floor iota
+// 	Wall
+// )
+// 
+// materials (have properties: flamable, impervious, porous, etc.)
+// 
