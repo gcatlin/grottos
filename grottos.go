@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"time"
 )
 
 func main() {
@@ -100,9 +101,11 @@ func (g *Game) MainMenu() {
 }
 
 func (g *Game) PlayGame() {
+	rand.Seed(time.Now().UnixNano() % 1e9)
 	s := PlayScreen{Game: g}
 	s.Map = NewGameMap(10*g.Width, 10*g.Height)
-	s.Map.Randomize()
+	s.Map.Grasslands()
+	s.Map.AddTrees()
 	s.KeyBindings = NewKeyBindingMap([]KeyBinding{
 		KeyBinding{'y', func() { s.MovePlayerNorthWest() }},
 		KeyBinding{'u', func() { s.MovePlayerNorthEast() }},
@@ -113,9 +116,11 @@ func (g *Game) PlayGame() {
 		KeyBinding{'b', func() { s.MovePlayerSouthWest() }},
 		KeyBinding{'n', func() { s.MovePlayerSouthEast() }},
 		KeyBinding{'g', func() { s.Map.Grasslands() }},
+		KeyBinding{'f', func() { s.Map.AddFoxes() }},
 		KeyBinding{'r', func() { s.Map.AddRabbits() }},
 		KeyBinding{'t', func() { s.Map.AddTrees() }},
 		KeyBinding{'c', func() { s.Map.MakeCaves() }},
+		KeyBinding{'e', func() { s.Map.ClearEntities() }},
 		KeyBinding{'q', func() { g.MainMenu() }},
 		KeyBinding{10, func() { g.WinGame() }},
 		KeyBinding{27, func() { g.LoseGame() }},
@@ -273,13 +278,19 @@ func (s *PlayScreen) Render(g *Game) {
 	if origin_y < 0 {
 		origin_y = 0
 	} else if origin_y+viewport_h >= s.Map.Height {
-		origin_y = s.Map.Height  - viewport_h
+		origin_y = s.Map.Height - viewport_h
 	}
 
-	for y := 0; y < viewport_h; y++ {
-		for x := 0; x < viewport_w; x++ {
-			if c, ok := s.Map.GetTile(origin_x+x, origin_y+y); ok {
-				g.Window.Mvaddch(y, x, c)
+	for vy := 0; vy < viewport_h; vy++ {
+		for vx := 0; vx < viewport_w; vx++ {
+			x, y := origin_x+vx, origin_y+vy
+			if c, ok := s.Map.GetTile(x, y); ok {
+				g.Window.Mvaddch(vy, vx, c)
+				if entities, ok := s.Map.Entities[Point{x, y}]; ok {
+					for _, e := range entities {
+						g.Window.Mvaddch(vy, vx, e.Symbol)
+					}
+				}
 			}
 		}
 	}
@@ -325,47 +336,55 @@ func (s *PlayScreen) HandleInput(kc KeyCode) {
 	}
 }
 
+func (s *PlayScreen) MovePlayer(dx, dy int) {
+	x, y := s.Player.X+dx, s.Player.Y+dy
+	if t, ok := s.Map.GetTile(x, y); ok && t != 'T' {
+		s.Player.X += dx
+		s.Player.Y += dy
+	}
+}
+
 func (s *PlayScreen) MovePlayerNorthWest() {
-	s.Player.X--
-	s.Player.Y--
+	s.MovePlayer(-1, -1)
 }
 
 func (s *PlayScreen) MovePlayerNorth() {
-	s.Player.Y--
+	s.MovePlayer(0, -1)
 }
 
 func (s *PlayScreen) MovePlayerNorthEast() {
-	s.Player.X++
-	s.Player.Y--
+	s.MovePlayer(1, -1)
 }
 
 func (s *PlayScreen) MovePlayerEast() {
-	s.Player.X++
+	s.MovePlayer(1, 0)
 }
 
 func (s *PlayScreen) MovePlayerSouthEast() {
-	s.Player.X++
-	s.Player.Y++
+	s.MovePlayer(1, 1)
 }
 
 func (s *PlayScreen) MovePlayerSouth() {
-	s.Player.Y++
+	s.MovePlayer(0, 1)
 }
 
 func (s *PlayScreen) MovePlayerSouthWest() {
-	s.Player.X--
-	s.Player.Y++
+	s.MovePlayer(-1, 1)
 }
 
 func (s *PlayScreen) MovePlayerWest() {
-	s.Player.X--
+	s.MovePlayer(-1, 0)
 }
 
 type Entity struct {
 	Location Point
-	Symbol int
+	Symbol   int
 	//Age
 	//Material
+}
+
+func NewEntity(s int) *Entity {
+	return &Entity{Symbol: s}
 }
 
 func Eat(e *Entity) {
@@ -471,16 +490,6 @@ func (m *GameMap) GetNeighbors(x, y int) []Point {
 	}
 }
 
-func (m *GameMap) PutEntity(x, y int, e *Entity) {
-	for y := 0; y < m.Height; y++ {
-		for x := 0; x < m.Width; x++ {
-			p := Point{x, y}
-			e.Location = p
-			m.Entities[p] = append(m.Entities[p], e)
-		}
-	}
-}
-
 func (m *GameMap) Grasslands() {
 	chars := []int{'.', ',', ';', '`', '\''}
 	for y := 0; y < m.Height; y++ {
@@ -490,12 +499,23 @@ func (m *GameMap) Grasslands() {
 	}
 }
 
+func (m *GameMap) PutEntity(x, y int, e *Entity) {
+	p := Point{x, y}
+	e.Location = p
+	m.Entities[p] = append(m.Entities[p], e)
+}
+
+func (m *GameMap) ClearEntities() {
+	for point := range m.Entities {
+		delete(m.Entities, point)
+	}
+}
+
 func (m *GameMap) AddFoxes() {
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
-			if rand.Intn(200) == 1 {
-				f := Fox{}
-				m.PutEntity(x, y, &f.Entity)
+			if rand.Intn(500) == 0 {
+				m.PutEntity(x, y, NewEntity('f'))
 			}
 		}
 	}
@@ -504,9 +524,8 @@ func (m *GameMap) AddFoxes() {
 func (m *GameMap) AddRabbits() {
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
-			if rand.Intn(25) == 1 {
-				r := Rabbit{}
-				m.PutEntity(x, y, &r.Entity)
+			if rand.Intn(100) == 0 {
+				m.PutEntity(x, y, NewEntity('r'))
 			}
 		}
 	}
@@ -515,7 +534,7 @@ func (m *GameMap) AddRabbits() {
 func (m *GameMap) AddTrees() {
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
-			if rand.Intn(4) == 1 {
+			if rand.Intn(10) == 0 {
 				m.Tiles[y][x] = 'T'
 			}
 		}
@@ -558,9 +577,10 @@ func NewGameMap(w, h int) *GameMap {
 
 func (m *GameMap) Randomize() {
 	chars := []int{'.', '#'}
+	n := len(chars)
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
-			m.Tiles[y][x] = chars[rand.Intn(len(chars))]
+			m.Tiles[y][x] = chars[rand.Intn(n)]
 		}
 	}
 }
